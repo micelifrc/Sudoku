@@ -40,9 +40,19 @@ private:
 
       unsigned int first_choice_available() const;
 
+      bool get_from_input() const { return _from_input; }
+
+      void set_from_input(bool from_input_) { _from_input = from_input_; }
+
+      bool get_is_conflictual() const { return _is_conflictual; }
+
+      void set_is_conflictual(bool is_conflictual_) { _is_conflictual = is_conflictual_; }
+
    private:
       std::array<int, SIZE> _locking_turn;  // tells in which turn each possibility was locked. It is AVAILABLE if was never deleted
       unsigned int _value;  // the current value of the tile. FREE if the value is not set
+      bool _from_input;  // tells if the Tiles was fixed as input
+      bool _is_conflictual;
    };
 
    typedef std::array<std::array<Tile, SIZE>, SIZE> Matrix;

@@ -19,10 +19,11 @@ int main(int argc, char *argv[]) {
          if (input_file.is_open()) {
             input_file.close();
          }
-         if(sudoku.solve()) {
+         if (sudoku.solve()) {
             std::cout << "The puzzle in file \"" << argv[idx] << "\" has solution:\n" << sudoku << std::endl;
          } else {
             std::cout << "The puzzle in file \"" << argv[idx] << "\" cannot be solved" << std::endl;
+            std::cout << "This is a partial solution:\n" << sudoku << std::endl;
          }
       } catch (std::exception &err) {
          std::cerr << err.what() << std::endl;

@@ -23,8 +23,10 @@ SudokuSolver::SudokuSolver(std::ifstream &input_file) : _num_free_tiles{SIZE * S
    for (cd.first = 0; cd.first != SIZE; ++cd.first) {
       for (cd.second = 0; cd.second != SIZE; ++cd.second) {
          if (input_numbers[cd.first * SIZE + cd.second] != 0) {
+            _matrix[cd.first][cd.second].set_from_input(true);
             if (not set_value(cd, input_numbers[cd.first * SIZE + cd.second])) {
                _is_solvable = false;
+               _matrix[cd.first][cd.second].set_is_conflictual(true);
                return;
             }
          }
@@ -130,7 +132,7 @@ SudokuSolver::Coord SudokuSolver::free_tile_with_smaller_freedom() const {
    return tile_min_freedom;
 }
 
-SudokuSolver::Tile::Tile() : _locking_turn{}, _value{FREE} {
+SudokuSolver::Tile::Tile() : _locking_turn{}, _value{FREE}, _from_input{false}, _is_conflictual{false} {
    for (auto &del_turn: _locking_turn) {
       del_turn = AVAILABLE;
    }
@@ -208,7 +210,14 @@ std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku) {
          if (idx_col % SudokuSolver::MINISIZE == 0) {
             os << '|';
          }
-         os << sudoku.matrix()[idx_row][idx_col].value();
+         if(sudoku.matrix()[idx_row][idx_col].get_is_conflictual()) {
+            os << "\033[1;31m";
+         } else if (sudoku.matrix()[idx_row][idx_col].get_from_input()) {
+            os << "\033[1;33m";
+         } else {
+            os << "\033[1;37m";
+         }
+         os << sudoku.matrix()[idx_row][idx_col].value() << "\033[0m";
       }
       os << "|\n";
    }
