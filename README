@@ -1,22 +1,19 @@
-This program will solve a sudoku, of size 9x9.
+This program will solve a sudoku, of size SIZExSIZE
 The program should be called with extra argument the names of the .txt files where the sudoku patterns are recorded.
 
-A sudoku input is given as a sequence of 81 numbers (which can also be displayed on separate lines).
-Spaces and new-lines are ignored.
-An empty tile should be marked as 0, while full tiles will be marked with numbers in the set [1,9].
-The following is an example of a possible input file:
+A sudoku input is given as a sequence of SIZExSIZE numbers (which can also be displayed on separate lines).
+Spaces and new-lines are used to separate the numbers.
+An empty tile should be marked as 0, while full tiles will be marked with numbers in the set [1,SIZE].
+The following is an example of a possible input file for the standard case of SIZE == 9:
 
-530 070 000
-600 195 000
-098 000 060
-800 060 003
-400 803 001
-700 020 006
-060 000 280
-000 419 005
-000 080 079
+5 3 0 0 7 0 0 0 0
+6 0 0 1 9 5 0 0 0
+0 9 8 0 0 0 0 6 0
+8 0 0 0 6 0 0 0 3
+4 0 0 8 0 3 0 0 1
+7 0 0 0 2 0 0 0 6
+0 6 0 0 0 0 2 8 0
+0 0 0 4 1 9 0 0 5
+0 0 0 0 8 0 0 7 9
 
 Observe that only the numeric characters will be read.
-
-In theory also larger grids (for example 16x16) could be solved,
-but this requires small changes in the constructor and the printing function

@@ -1,30 +1,23 @@
 //
 // Created by mich on 07/03/19.
-// Template class SudokuSolver
+// class SudokuSolver
 //
 
 #ifndef SUDOKU_SUDOKUSOLVER_H
 #define SUDOKU_SUDOKUSOLVER_H
 
-#include <array>
 #include <vector>
 #include <fstream>
 #include <cmath>
 
 // This class will represent a sudoku of arbitrary size
-// NOTE if you use MINISIZE > 3, you should think of a different encoding for the numbers.
-// This would require to update the constructor and the operator<<
-template<unsigned int MINISIZE = 3>
 class SudokuSolver {
-public:
-   const static unsigned int SIZE = MINISIZE * MINISIZE;  // the size of an edge. Usually == 9
-
 private:
    class Tile {
-      static const int FREE = 0;  // denotes the tile doesn't have a value yet
-      static const int AVAILABLE = -1;  // denotes a possible value for the tile is still available
+      static const unsigned int FREE;  // denotes the tile doesn't have a value yet
+      static const int AVAILABLE;  // denotes a possible value for the tile is still available
    public:
-      Tile();
+      explicit Tile(unsigned int grid_size_ = 0);
 
       // Set the tile to the required value, at time @p turn
       // The operation fails if the tile already contains a value, or if @p val is locked
@@ -43,7 +36,7 @@ private:
       int value() const { return _value; }  // the current value
 
       bool has_legal_value() const {
-         return _value > FREE and _value <= SIZE;
+         return _value > FREE and _value <= _grid_size;
       }  // tells if the contained value is legal
 
       // The number of free possibilities for the tile. It is 1 if _value is fixed
@@ -72,13 +65,14 @@ private:
       void set_is_conflictual(bool is_conflictual_) { _is_conflictual = is_conflictual_; }
 
    private:
-      std::array<int, SIZE> _locking_turn;  // tells in which turn each possibility was locked. It is AVAILABLE if was never deleted
+      std::vector<int> _locking_turn;  // tells in which turn each possibility was locked. It is AVAILABLE if was never deleted. Will have size = _grid_size
       unsigned int _value;  // the current value of the tile. FREE if the value is not set
       bool _from_input;  // tells if the tile was fixed as input
       bool _is_conflictual;  // tells if the tile created a conflict at time 0 (making the puzzle impossible)
+      unsigned int _grid_size;
    };
 
-   typedef std::array<std::array<Tile, SIZE>, SIZE> Matrix;  // The sudoku matrix
+   typedef std::vector<std::vector<Tile>> Matrix;  // The sudoku matrix
    typedef std::pair<int, int> Coord;  // two coordinates for a sudoku entry in the matrix
 
 public:
@@ -97,6 +91,11 @@ public:
 
    bool is_solvable() const { return _is_solvable; }
 
+   unsigned int get_minisize() const { return _minisize; }
+
+   unsigned int get_size() const { return _size; }
+
+   static bool is_positive_square(unsigned int n);
 private:
 
    // Set a required value @p val in the entry of _matrix at coordinated @p coord
@@ -124,15 +123,13 @@ private:
    unsigned int turn() const { return static_cast<unsigned int>(_guesses_list.size()); }
 
    Matrix _matrix;  // The matrix of Tiles. Represents the Sudoku matrix
-   int _num_free_tiles;  // The number of tiles for which the value has not been fixed yet
+   unsigned int _num_free_tiles;  // The number of tiles for which the value has not been fixed yet
    std::vector<Coord> _guesses_list;  // A list of the coordinates where we made "active" guesses. The list is sorted
    bool _is_solvable;  // False if we proved there is no solution for the puzzle
+   unsigned int _minisize;  // The length of a small tile (usually 3)
+   unsigned int _size;  // The length of the matrix (usually 9)
 };
 
-// currently specific for the case MINISIZE == 3
-template<unsigned int MINISIZE>
-std::ostream &operator<<(std::ostream &os, const SudokuSolver<MINISIZE> &sudoku);
-
-#include "SudokuSolver.tpp"
+std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku);
 
 #endif //SUDOKU_SUDOKUSOLVER_H
