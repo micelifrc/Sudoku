@@ -162,7 +162,7 @@ bool SudokuSolver::guess() {
          }
          remove_guess();
          _guesses_list.pop_back();
-         if(not lock_possible_value(tile_to_guess, candidate_value)) {
+         if (not lock_possible_value(tile_to_guess, candidate_value)) {
             return false;
          }
       }
@@ -197,10 +197,78 @@ SudokuSolver::Coord SudokuSolver::free_tile_with_smaller_freedom() const {
 
 
 bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
-   if(not _matrix[coord.first][coord.second].lock_possibile_value(val, turn())) {
+   if (not _matrix[coord.first][coord.second].lock_possibile_value(val, turn())) {
       return false;
    }
-   // should also propagate here
+
+   bool should_propagate = false;
+   unsigned int other_entry = SIZE;
+   for (unsigned int idx = 0; idx != SIZE; ++idx) {
+      if (_matrix[coord.first][idx].can_set_to(val)) {
+         if (other_entry < SIZE) {
+            should_propagate = false;
+            break;
+         } else {
+            should_propagate = true;
+            other_entry = idx;
+         }
+      }
+   }
+   if (other_entry == SIZE) {
+      return false;
+   }
+   if (should_propagate) {
+      if (not set_value(Coord{coord.first, other_entry}, val)) {
+         return false;
+      }
+   }
+
+   should_propagate = false;
+   other_entry = SIZE;
+   for (unsigned int idx = 0; idx != SIZE; ++idx) {
+      if (_matrix[idx][coord.second].can_set_to(val)) {
+         if (other_entry < SIZE) {
+            should_propagate = false;
+            break;
+         } else {
+            should_propagate = true;
+            other_entry = idx;
+         }
+      }
+   }
+   if (other_entry == SIZE) {
+      return false;
+   }
+   if (should_propagate) {
+      if (not set_value(Coord{other_entry, coord.second}, val)) {
+         return false;
+      }
+   }
+
+   should_propagate = false;
+   other_entry = SIZE;
+   for (unsigned int idx = 0; idx != SIZE; ++idx) {
+      if (_matrix[(coord.first / MINISIZE) * MINISIZE + (idx / MINISIZE)][(coord.first % MINISIZE) * MINISIZE +
+                                                                          (idx % MINISIZE)].can_set_to(val)) {
+         if (other_entry < SIZE) {
+            should_propagate = false;
+            break;
+         } else {
+            should_propagate = true;
+            other_entry = idx;
+         }
+      }
+   }
+   if (other_entry == SIZE) {
+      return false;
+   }
+   if (should_propagate) {
+      if (not set_value(Coord{(coord.first / MINISIZE) * MINISIZE + (other_entry / MINISIZE),
+                              (coord.first % MINISIZE) * MINISIZE + (other_entry % MINISIZE)}, val)) {
+         return false;
+      }
+   }
+
    return true;
 }
 
