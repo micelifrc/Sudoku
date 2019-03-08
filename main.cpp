@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
          if (input_file.is_open()) {
             input_file.close();
          }
-         if (sudoku.solve()) {
+         if (sudoku.solve() and sudoku.has_legal_solution()) {
             std::cout << "The puzzle in file \"" << argv[idx] << "\" has solution:\n" << sudoku << std::endl;
          } else {
             std::cout << "The puzzle in file \"" << argv[idx] << "\" cannot be solved" << std::endl;

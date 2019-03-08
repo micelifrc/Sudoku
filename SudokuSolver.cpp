@@ -5,7 +5,7 @@
 #include "SudokuSolver.h"
 
 SudokuSolver::SudokuSolver(std::ifstream &input_file) : _num_free_tiles{SIZE * SIZE}, _is_solvable{true} {
-   _guesses.reserve(SIZE * SIZE);
+   _guesses_list.reserve(SIZE * SIZE);
    std::vector<unsigned int> input_numbers;
    char c;
    while (input_file >> c) {
@@ -38,15 +38,74 @@ bool SudokuSolver::solve() {
    return _is_solvable and guess();
 }
 
+
+bool SudokuSolver::has_legal_solution() const {
+   for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
+      for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
+         if (not _matrix[idx_row][idx_col].has_legal_value()) {
+            return false;
+         }
+      }
+   }
+
+   std::array<bool, SIZE> contained_values{};
+   auto reset_contained_values = [&]() {
+      for (auto &val : contained_values) {
+         val = false;
+      }
+   };
+   auto all_values_are_contained = [&]() -> bool {
+      for (const auto &val : contained_values) {
+         if (not val) {
+            return false;
+         }
+      }
+      return true;
+   };
+
+   for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
+      reset_contained_values();
+      for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
+         contained_values[_matrix[idx_row][idx_col].value() - 1] = true;
+      }
+      if (not all_values_are_contained()) {
+         return false;
+      }
+   }
+   for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
+      reset_contained_values();
+      for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
+         contained_values[_matrix[idx_row][idx_col].value() - 1] = true;
+      }
+      if (not all_values_are_contained()) {
+         return false;
+      }
+   }
+   for (unsigned int idx_ext = 0; idx_ext != SIZE; ++idx_ext) {
+      reset_contained_values();
+      for (unsigned int idx_int = 0; idx_int != SIZE; ++idx_int) {
+         contained_values[
+               _matrix[(idx_ext / MINISIZE) * MINISIZE + (idx_int / MINISIZE)][(idx_ext % MINISIZE) * MINISIZE +
+                                                                               (idx_int % MINISIZE)].value() -
+               1] = true;
+      }
+      if (not all_values_are_contained()) {
+         return false;
+      }
+   }
+   return true;
+}
+
 // currently not working accordingly
 bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
    if (not _matrix[coord.first][coord.second].can_set_to(value)) {
       return false;
    }
-   if (not _matrix[coord.first][coord.second].is_fixed()) {
-      _matrix[coord.first][coord.second].set_to_value(value, turn());
-      --_num_free_tiles;
+   if (_matrix[coord.first][coord.second].is_fixed()) {
+      return true;
    }
+   _matrix[coord.first][coord.second].set_to_value(value, turn());
+   --_num_free_tiles;
    for (int idx = 0; idx != SIZE; ++idx) {
       if (idx != coord.first) {
          if (not _matrix[idx][coord.second].lock_possibile_value(value, turn())) {
@@ -95,24 +154,26 @@ bool SudokuSolver::guess() {
       return true;
    }
    Coord tile_to_guess = free_tile_with_smaller_freedom();
-   _guesses.push_back(tile_to_guess);
    for (unsigned int candidate_value = 1; candidate_value <= SIZE; ++candidate_value) {
       if (_matrix[tile_to_guess.first][tile_to_guess.second].can_set_to(candidate_value)) {
+         _guesses_list.push_back(tile_to_guess);
          if (set_value(tile_to_guess, candidate_value) and guess()) {
             return true;
          }
          remove_guess();
-         _matrix[tile_to_guess.first][tile_to_guess.second].lock_possibile_value(candidate_value, turn() - 1);
+         _guesses_list.pop_back();
+         if(not lock_possible_value(tile_to_guess, candidate_value)) {
+            return false;
+         }
       }
    }
-   _guesses.pop_back();
    return false;
 }
 
 void SudokuSolver::remove_guess() {
    for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
       for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
-         if(_matrix[idx_row][idx_col].reset_from_turn(turn())) {
+         if (_matrix[idx_row][idx_col].reset_from_turn(turn())) {
             ++_num_free_tiles;
          }
       }
@@ -132,6 +193,15 @@ SudokuSolver::Coord SudokuSolver::free_tile_with_smaller_freedom() const {
       }
    }
    return tile_min_freedom;
+}
+
+
+bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
+   if(not _matrix[coord.first][coord.second].lock_possibile_value(val, turn())) {
+      return false;
+   }
+   // should also propagate here
+   return true;
 }
 
 SudokuSolver::Tile::Tile() : _locking_turn{}, _value{FREE}, _from_input{false}, _is_conflictual{false} {
@@ -157,10 +227,10 @@ bool SudokuSolver::Tile::lock_possibile_value(unsigned int val, unsigned int tur
    if (val < 1 or val > SIZE) {
       throw std::logic_error("Call of lock_possible_value for illegal value");
    }
-   if(_value == val) {
+   if (_value == val) {
       return false;
    }
-   if(_locking_turn[val - 1] == AVAILABLE) {
+   if (_locking_turn[val - 1] == AVAILABLE) {
       _locking_turn[val - 1] = turn;
    }
    return (num_possibilities() > 0 or is_fixed());
@@ -220,7 +290,7 @@ std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku) {
          if (idx_col % SudokuSolver::MINISIZE == 0) {
             os << '|';
          }
-         if(sudoku.matrix()[idx_row][idx_col].get_is_conflictual()) {
+         if (sudoku.matrix()[idx_row][idx_col].get_is_conflictual()) {
             os << "\033[1;31m";
          } else if (sudoku.matrix()[idx_row][idx_col].get_from_input()) {
             os << "\033[1;33m";
