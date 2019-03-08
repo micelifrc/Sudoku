@@ -36,7 +36,7 @@ private:
 
       unsigned int freedom_index() const { return is_fixed() ? SIZE + 1 : num_possibilities(); }
 
-      void reset_from_turn(unsigned int turn);
+      bool reset_from_turn(unsigned int turn);  // returns true if this remove the value
 
       unsigned int first_choice_available() const;
 

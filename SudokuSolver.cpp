@@ -112,7 +112,9 @@ bool SudokuSolver::guess() {
 void SudokuSolver::remove_guess() {
    for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
       for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
-         _matrix[idx_row][idx_col].reset_from_turn(turn());
+         if(_matrix[idx_row][idx_col].reset_from_turn(turn())) {
+            ++_num_free_tiles;
+         }
       }
    }
 }
@@ -155,8 +157,13 @@ bool SudokuSolver::Tile::lock_possibile_value(unsigned int val, unsigned int tur
    if (val < 1 or val > SIZE) {
       throw std::logic_error("Call of lock_possible_value for illegal value");
    }
-   _locking_turn[val - 1] = turn;
-   return num_possibilities() > 0 or is_fixed();
+   if(_value == val) {
+      return false;
+   }
+   if(_locking_turn[val - 1] == AVAILABLE) {
+      _locking_turn[val - 1] = turn;
+   }
+   return (num_possibilities() > 0 or is_fixed());
 }
 
 bool SudokuSolver::Tile::can_set_to(unsigned int value) const {
@@ -179,15 +186,18 @@ unsigned int SudokuSolver::Tile::num_possibilities() const {
    return counter;
 }
 
-void SudokuSolver::Tile::reset_from_turn(unsigned int turn) {
+bool SudokuSolver::Tile::reset_from_turn(unsigned int turn) {
+   bool is_freed = false;
    if (is_fixed() and _locking_turn[_value - 1] >= turn) {
-      _value = 0;
+      _value = FREE;
+      is_freed = true;
    }
    for (auto &possibility : _locking_turn) {
       if (possibility >= turn) {
-         possibility = SIZE;
+         possibility = AVAILABLE;
       }
    }
+   return is_freed;
 }
 
 
