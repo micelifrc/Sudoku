@@ -1,7 +1,7 @@
 This program will solve a sudoku, of size 9x9.
 The program should be called with extra argument the names of the .txt files where the sudoku patterns are recorded.
 
-A sudoku input is given as a sequence of 81 numbers (which cal also be displayed on separate lines).
+A sudoku input is given as a sequence of 81 numbers (which can also be displayed on separate lines).
 Spaces and new-lines are ignored.
 An empty tile should be marked as 0, while full tiles will be marked with numbers in the set [1,9].
 The following is an example of a possible input file:
@@ -17,3 +17,6 @@ The following is an example of a possible input file:
 000 080 079
 
 Observe that only the numeric characters will be read.
+
+In theory also larger grids (for example 16x16) could be solved,
+but this requires small changes in the constructor and the printing function
