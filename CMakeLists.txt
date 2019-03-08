@@ -3,4 +3,4 @@ project(Sudoku)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Sudoku main.cpp SudokuSolver.cpp)
+add_executable(Sudoku main.cpp)

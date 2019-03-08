@@ -1,10 +1,10 @@
 //
 // Created by mich on 07/03/19.
+// Implementation file for the template class SudokuSolver
 //
 
-#include "SudokuSolver.h"
-
-SudokuSolver::SudokuSolver(std::ifstream &input_file) : _num_free_tiles{SIZE * SIZE}, _is_solvable{true} {
+template<unsigned int MINISIZE>
+SudokuSolver<MINISIZE>::SudokuSolver(std::ifstream &input_file) : _num_free_tiles{SIZE * SIZE}, _is_solvable{true} {
    _guesses_list.reserve(SIZE * SIZE);
    std::vector<unsigned int> input_numbers;
    char c;
@@ -34,12 +34,8 @@ SudokuSolver::SudokuSolver(std::ifstream &input_file) : _num_free_tiles{SIZE * S
    }
 }
 
-bool SudokuSolver::solve() {
-   return _is_solvable and guess();
-}
-
-
-bool SudokuSolver::has_legal_solution() const {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::has_legal_solution() const {
    for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
       for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
          if (not _matrix[idx_row][idx_col].has_legal_value()) {
@@ -96,8 +92,8 @@ bool SudokuSolver::has_legal_solution() const {
    return true;
 }
 
-// currently not working accordingly
-bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::set_value(SudokuSolver::Coord coord, unsigned int value) {
    if (not _matrix[coord.first][coord.second].can_set_to(value)) {
       return false;
    }
@@ -149,7 +145,8 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
    return true;
 }
 
-bool SudokuSolver::guess() {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::guess() {
    if (_num_free_tiles == 0) {
       return true;
    }
@@ -170,7 +167,8 @@ bool SudokuSolver::guess() {
    return false;
 }
 
-void SudokuSolver::remove_guess() {
+template<unsigned int MINISIZE>
+void SudokuSolver<MINISIZE>::remove_guess() {
    for (unsigned int idx_row = 0; idx_row != SIZE; ++idx_row) {
       for (unsigned int idx_col = 0; idx_col != SIZE; ++idx_col) {
          if (_matrix[idx_row][idx_col].reset_from_turn(turn())) {
@@ -180,7 +178,8 @@ void SudokuSolver::remove_guess() {
    }
 }
 
-SudokuSolver::Coord SudokuSolver::free_tile_with_smaller_freedom() const {
+template<unsigned int MINISIZE>
+typename SudokuSolver<MINISIZE>::Coord SudokuSolver<MINISIZE>::free_tile_with_smaller_freedom() const {
    Coord tile_min_freedom{0, 0}, candidate_tile{0, 0};
    unsigned long min_freedom = _matrix[0][0].freedom_index();
    for (candidate_tile.first = 0; candidate_tile.first != SIZE; ++candidate_tile.first) {
@@ -195,8 +194,8 @@ SudokuSolver::Coord SudokuSolver::free_tile_with_smaller_freedom() const {
    return tile_min_freedom;
 }
 
-
-bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::lock_possible_value(Coord coord, unsigned int val) {
    if (not _matrix[coord.first][coord.second].lock_possibile_value(val, turn())) {
       return false;
    }
@@ -272,13 +271,15 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
    return true;
 }
 
-SudokuSolver::Tile::Tile() : _locking_turn{}, _value{FREE}, _from_input{false}, _is_conflictual{false} {
+template<unsigned int MINISIZE>
+SudokuSolver<MINISIZE>::Tile::Tile() : _locking_turn{}, _value{FREE}, _from_input{false}, _is_conflictual{false} {
    for (auto &del_turn: _locking_turn) {
       del_turn = AVAILABLE;
    }
 }
 
-bool SudokuSolver::Tile::set_to_value(unsigned int val, unsigned int turn) {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::Tile::set_to_value(unsigned int val, unsigned int turn) {
    if (not can_set_to(val) or is_fixed()) {
       return false;
    }
@@ -291,7 +292,8 @@ bool SudokuSolver::Tile::set_to_value(unsigned int val, unsigned int turn) {
    return true;
 }
 
-bool SudokuSolver::Tile::lock_possibile_value(unsigned int val, unsigned int turn) {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::Tile::lock_possibile_value(unsigned int val, unsigned int turn) {
    if (val < 1 or val > SIZE) {
       throw std::logic_error("Call of lock_possible_value for illegal value");
    }
@@ -304,14 +306,16 @@ bool SudokuSolver::Tile::lock_possibile_value(unsigned int val, unsigned int tur
    return (num_possibilities() > 0 or is_fixed());
 }
 
-bool SudokuSolver::Tile::can_set_to(unsigned int value) const {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::Tile::can_set_to(unsigned int value) const {
    if (_value == value) {
       return true;
    }
    return not is_fixed() and value > 0 and value <= SIZE and _locking_turn[value - 1] == AVAILABLE;
 }
 
-unsigned int SudokuSolver::Tile::num_possibilities() const {
+template<unsigned int MINISIZE>
+unsigned int SudokuSolver<MINISIZE>::Tile::num_possibilities() const {
    if (is_fixed()) {
       return 1;
    }
@@ -324,7 +328,8 @@ unsigned int SudokuSolver::Tile::num_possibilities() const {
    return counter;
 }
 
-bool SudokuSolver::Tile::reset_from_turn(unsigned int turn) {
+template<unsigned int MINISIZE>
+bool SudokuSolver<MINISIZE>::Tile::reset_from_turn(unsigned int turn) {
    bool is_freed = false;
    if (is_fixed() and _locking_turn[_value - 1] >= turn) {
       _value = FREE;
@@ -338,8 +343,8 @@ bool SudokuSolver::Tile::reset_from_turn(unsigned int turn) {
    return is_freed;
 }
 
-
-unsigned int SudokuSolver::Tile::first_choice_available() const {
+template<unsigned int MINISIZE>
+unsigned int SudokuSolver<MINISIZE>::Tile::first_choice_available() const {
    for (unsigned int possibility = 1; possibility <= SIZE; ++possibility) {
       if (can_set_to(possibility)) {
          return possibility;
@@ -348,14 +353,15 @@ unsigned int SudokuSolver::Tile::first_choice_available() const {
    throw std::logic_error("Call to first choice available without any choice available");
 }
 
-std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku) {
-   std::string horizontal_line(SudokuSolver::SIZE + SudokuSolver::MINISIZE + 1, '-');
-   for (unsigned int idx_row = 0; idx_row != SudokuSolver::SIZE; ++idx_row) {
-      if (idx_row % SudokuSolver::MINISIZE == 0) {
+template<unsigned int MINISIZE>
+std::ostream &operator<<(std::ostream &os, const SudokuSolver<MINISIZE> &sudoku) {
+   std::string horizontal_line(SudokuSolver<MINISIZE>::SIZE + MINISIZE + 1, '-');
+   for (unsigned int idx_row = 0; idx_row != SudokuSolver<MINISIZE>::SIZE; ++idx_row) {
+      if (idx_row % MINISIZE == 0) {
          os << horizontal_line << std::endl;
       }
-      for (unsigned int idx_col = 0; idx_col != SudokuSolver::SIZE; ++idx_col) {
-         if (idx_col % SudokuSolver::MINISIZE == 0) {
+      for (unsigned int idx_col = 0; idx_col != SudokuSolver<MINISIZE>::SIZE; ++idx_col) {
+         if (idx_col % MINISIZE == 0) {
             os << '|';
          }
          if (sudoku.matrix()[idx_row][idx_col].get_is_conflictual()) {

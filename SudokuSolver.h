@@ -1,5 +1,6 @@
 //
 // Created by mich on 07/03/19.
+// Template class SudokuSolver
 //
 
 #ifndef SUDOKU_SUDOKUSOLVER_H
@@ -10,9 +11,12 @@
 #include <fstream>
 #include <cmath>
 
+// This class will represent a sudoku of arbitrary size
+// NOTE if you use MINISIZE > 3, you should think of a different encoding for the numbers.
+// This would require to update the constructor and the operator<<
+template<unsigned int MINISIZE = 3>
 class SudokuSolver {
 public:
-   const static unsigned int MINISIZE = 3;  // the square root of the size of an edge. Usually == 3
    const static unsigned int SIZE = MINISIZE * MINISIZE;  // the size of an edge. Usually == 9
 
 private:
@@ -79,11 +83,12 @@ private:
 
 public:
    // @p input_file is a file from which to read the sudoku
+   // currently specific for the case MINISIZE == 3
    explicit SudokuSolver(std::ifstream &input_file);
 
    // solves the input sudoku
    // Returns true if the sudoku was solved successfully, or false if it failed (meaning there are no solutions)
-   bool solve();
+   bool solve() { return _is_solvable and guess(); }
 
    // Checks if the current solution is legal (this should be redundant, but it is a security check)
    bool has_legal_solution() const;
@@ -124,6 +129,10 @@ private:
    bool _is_solvable;  // False if we proved there is no solution for the puzzle
 };
 
-std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku);
+// currently specific for the case MINISIZE == 3
+template<unsigned int MINISIZE>
+std::ostream &operator<<(std::ostream &os, const SudokuSolver<MINISIZE> &sudoku);
+
+#include "SudokuSolver.tpp"
 
 #endif //SUDOKU_SUDOKUSOLVER_H
