@@ -1,0 +1,19 @@
+This program will solve a sudoku, of size 9x9.
+The program should be called with extra argument the names of the .txt files where the sudoku patterns are recorded.
+
+A sudoku input is given as a sequence of 81 numbers (which cal also be displayed on separate lines).
+Spaces and new-lines are ignored.
+An empty tile should be marked as 0, while full tiles will be marked with numbers in the set [1,9].
+The following is an example of a possible input file:
+
+530 070 000
+600 195 000
+098 000 060
+800 060 003
+400 803 001
+700 020 006
+060 000 280
+000 419 005
+000 080 079
+
+Observe that only the numeric characters will be read.
