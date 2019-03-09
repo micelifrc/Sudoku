@@ -16,8 +16,12 @@ class SudokuSolver {
 public:
    static const unsigned int FREE;  // denotes the tile doesn't have a value yet
    static const int AVAILABLE;  // denotes a possible value for the tile is still available
+
+   struct Coord {
+      unsigned int row_idx, col_idx;
+      explicit Coord(unsigned int row_idx_ = 0, unsigned int col_idx_ = 0) : row_idx{row_idx_}, col_idx{col_idx_} {}
+   };
 private:
-   typedef std::pair<unsigned int, unsigned int> Coord;  // two coordinates for a sudoku entry in the matrix
    class Tile {
    public:
       explicit Tile(unsigned int grid_size_ = 0);
@@ -85,33 +89,40 @@ private:
    public:
       GeoBlock(SudokuSolver &ss, GeoDir dir_, unsigned int position_);
 
+      // locks the represented value of entry with index @p idx at required @p turn
       bool lock_possibile_value(unsigned int idx, unsigned int turn);
 
+      // remove all lockings at time >= @p turn
       void reset_from_turn(unsigned int turn);
 
+      // The number of tiles that can be set to the represented number
       unsigned int num_free() const { return _num_free; }
 
+      // Represent the level of freedom for the geometric block
       unsigned int freedom_index() const {
          return _num_free == 0 ? std::numeric_limits<unsigned int>::max() : _num_free;
       }
 
+      // The coordinates of tiles in the geometric block that are still free for the represented value
       std::vector<Coord> avaliable_coordinates() const;
 
+      // The number of tiles in the geometric block
       unsigned int size() const { return static_cast<unsigned int>(_elements.size()); }
 
    private:
-      struct Entry {
+      // a tile, together with the time in which the represented value was locked
+      struct Element {
          const Tile *tile;
          int turn;
 
-         explicit Entry(Tile *tile_ = nullptr, int turn_ = AVAILABLE) : tile{tile_}, turn{turn_} {}
+         explicit Element(Tile *tile_ = nullptr, int turn_ = AVAILABLE) : tile{tile_}, turn{turn_} {}
       };
 
-      std::vector<Entry> _elements;
-      unsigned int _num_free;
-      GeoDir _dir;
-      unsigned int _position;
-      unsigned int _minisize;
+      std::vector<Element> _elements;  // all the tiles in the geometric block
+      unsigned int _num_free;  // the number of tiles that can take the represented value
+      GeoDir _dir;  // the direction of the geometric block
+      unsigned int _position;  // the position of the goemetric block (a number in [0, _size))
+      unsigned int _minisize;  // the minsize of the associated SudokuSolver
    };
 
    struct GeoCoord {
@@ -176,12 +187,12 @@ private:
    unsigned int turn() const { return static_cast<unsigned int>(_guesses_list.size()); }
 
    // the supergrid index of a coord
-   unsigned int supergrid_idx(Coord cd) const { return (cd.first / _minisize) * _minisize + (cd.second / _minisize); }
+   unsigned int supergrid_idx(Coord cd) const { return (cd.row_idx / _minisize) * _minisize + (cd.col_idx / _minisize); }
 
    // the minigrid index of a coord
-   unsigned int minigrid_idx(Coord cd) const { return (cd.first % _minisize) * _minisize + (cd.second % _minisize); }
+   unsigned int minigrid_idx(Coord cd) const { return (cd.row_idx % _minisize) * _minisize + (cd.col_idx % _minisize); }
 
-   const Tile &tile(Coord cd) const { return _matrix[cd.first][cd.second]; }
+   const Tile &tile(Coord cd) const { return _matrix[cd.row_idx][cd.col_idx]; }
    Tile &tile(Coord cd) { return const_cast<Tile&>(static_cast<const SudokuSolver&>(*this).tile(cd)); }
    const GeoBlock &geo_block(GeoCoord cd) const { return _geo_blocks[cd.value-1][cd.dir][cd.idx]; }
    GeoBlock &geo_block(GeoCoord cd) { return const_cast<GeoBlock&>(static_cast<const SudokuSolver&>(*this).geo_block(cd)); }
