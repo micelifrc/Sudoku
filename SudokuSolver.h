@@ -65,11 +65,11 @@ private:
    // NOTE the value will be set in the tile also if its propagation brings to conflicts
    bool set_value(Coord coord, unsigned int value);
 
-   // Guesses a value for a free tile. Only called when all propagations are done.
+   // Guesses a value for a free tile. Only called when all propagation are done.
    // This will effect both _guesses_list and the entries of the matrix
    bool guess();
 
-   // Remove the last guess (deleting all
+   // Remove the last guess (deleting all the locks)
    void remove_guess();
 
    // the tile with less freedom among those that are free
@@ -79,7 +79,7 @@ private:
    GeoCoord free_geo_block_with_smaller_freedom() const;
 
    // locks @p val in the tile in coordinate @p coord
-   // returns false if the locking brings to unfeasable solution
+   // returns false if the locking brings to unfeasible solution
    bool lock_possible_value(Coord coord, unsigned int val);
 
    // locks all the points in _geo_blocks with coordinates @p cd and required @p value
@@ -120,7 +120,7 @@ public:
 
    // locks the required @p val at time @p turn
    // it will fail if _value == @p val, or if this would lock all possibilities
-   bool lock_possibile_value(unsigned int val, unsigned int turn);
+   bool lock_possible_value(unsigned int val, unsigned int turn);
 
    // tells if the tile contains a value
    bool is_fixed() const { return _value != FREE; }
@@ -186,7 +186,7 @@ public:
    }
 
    // The coordinates of tiles in the geometric block that are still free for the represented value
-   std::vector<Coord> avaliable_coordinates() const;
+   std::vector<Coord> available_coordinates() const;
 
    // The number of tiles in the geometric block
    unsigned int size() const { return static_cast<unsigned int>(_elements.size()); }
@@ -203,7 +203,7 @@ private:
    std::vector<Element> _elements;  // all the tiles in the geometric block
    unsigned int _num_free;  // the number of tiles that can take the represented value
    GeoDir _dir;  // the direction of the geometric block
-   unsigned int _position;  // the position of the goemetric block (a number in [0, _size))
+   unsigned int _position;  // the position of the geometric block (a number in [0, _size))
    unsigned int _minisize;  // the minsize of the associated SudokuSolver
 };
 

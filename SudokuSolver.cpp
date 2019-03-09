@@ -117,8 +117,8 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
    }
 
    tile(coord).set_to_value(value, turn());
-   for (unsigned int forb_value = 1; forb_value <= _size; ++forb_value) {
-      lock_all_geo_blocks(coord, forb_value);
+   for (unsigned int forbidden_value = 1; forbidden_value <= _size; ++forbidden_value) {
+      lock_all_geo_blocks(coord, forbidden_value);
    }
    for (unsigned int idx = 0; idx != _size; ++idx) {
       if (idx != coord.row_idx) {
@@ -141,7 +141,7 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
 
    for (unsigned int idx = 0; idx != _size; ++idx) {
       if (idx != coord.row_idx) {
-         if (not _matrix[idx][coord.col_idx].lock_possibile_value(value, turn())) {
+         if (not _matrix[idx][coord.col_idx].lock_possible_value(value, turn())) {
             return false;
          }
          if (_matrix[idx][coord.col_idx].num_possibilities() == 1 and not _matrix[idx][coord.col_idx].is_fixed()) {
@@ -151,7 +151,7 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
          }
       }
       if (idx != coord.col_idx) {
-         if (not _matrix[coord.row_idx][idx].lock_possibile_value(value, turn())) {
+         if (not _matrix[coord.row_idx][idx].lock_possible_value(value, turn())) {
             return false;
          }
          if (_matrix[coord.row_idx][idx].num_possibilities() == 1 and not _matrix[coord.row_idx][idx].is_fixed()) {
@@ -167,7 +167,7 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
          for (unsigned int idx_col = _minisize * (coord.col_idx / _minisize);
               idx_col != _minisize * (coord.col_idx / _minisize + 1); ++idx_col) {
             if (idx_col != coord.col_idx) {
-               if (not _matrix[idx_row][idx_col].lock_possibile_value(value, turn())) {
+               if (not _matrix[idx_row][idx_col].lock_possible_value(value, turn())) {
                   return false;
                }
                if (_matrix[idx_row][idx_col].num_possibilities() == 1 and not _matrix[idx_row][idx_col].is_fixed()) {
@@ -205,7 +205,7 @@ bool SudokuSolver::guess() {
          }
       }
    } else {
-      for (Coord candidate_coord : geo_block_to_fix.avaliable_coordinates()) {
+      for (Coord candidate_coord : geo_block_to_fix.available_coordinates()) {
          Tile &candidate_tile = tile(candidate_coord);
          if (candidate_tile.can_set_to(smaller_free_geo_block_coord.value)) {
             _guesses_list.push_back(tile_to_guess_coord);
@@ -273,7 +273,7 @@ SudokuSolver::GeoCoord SudokuSolver::free_geo_block_with_smaller_freedom() const
 }
 
 bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
-   if (not tile(coord).lock_possibile_value(val, turn())) {
+   if (not tile(coord).lock_possible_value(val, turn())) {
       return false;
    }
 
@@ -383,7 +383,7 @@ bool SudokuSolver::Tile::set_to_value(unsigned int val, unsigned int turn) {
    return true;
 }
 
-bool SudokuSolver::Tile::lock_possibile_value(unsigned int val, unsigned int turn) {
+bool SudokuSolver::Tile::lock_possible_value(unsigned int val, unsigned int turn) {
    if (val < 1 or val > _grid_size) {
       throw std::logic_error("Call of lock_possible_value for illegal value");
    }
@@ -484,7 +484,7 @@ void SudokuSolver::GeoBlock::reset_from_turn(unsigned int turn) {
    }
 }
 
-std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::avaliable_coordinates() const {
+std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::available_coordinates() const {
    std::vector<SudokuSolver::Coord> output_vec;
    switch (_dir) {
       case ROW: {
