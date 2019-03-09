@@ -6,16 +6,19 @@
 #ifndef SUDOKU_SUDOKUSOLVER_H
 #define SUDOKU_SUDOKUSOLVER_H
 
-#include <vector>
 #include <fstream>
 #include <cmath>
+#include <array>
+#include <vector>
 
 // This class will represent a sudoku of arbitrary size
 class SudokuSolver {
+public:
+   static const unsigned int FREE;  // denotes the tile doesn't have a value yet
+   static const int AVAILABLE;  // denotes a possible value for the tile is still available
 private:
+   typedef std::pair<unsigned int, unsigned int> Coord;  // two coordinates for a sudoku entry in the matrix
    class Tile {
-      static const unsigned int FREE;  // denotes the tile doesn't have a value yet
-      static const int AVAILABLE;  // denotes a possible value for the tile is still available
    public:
       explicit Tile(unsigned int grid_size_ = 0);
 
@@ -71,9 +74,52 @@ private:
       bool _is_conflictual;  // tells if the tile created a conflict at time 0 (making the puzzle impossible)
       unsigned int _grid_size;
    };
-
    typedef std::vector<std::vector<Tile>> Matrix;  // The sudoku matrix
-   typedef std::pair<int, int> Coord;  // two coordinates for a sudoku entry in the matrix
+
+   enum GeoDir : unsigned int {
+      ROW = 0, COL = 1, MINISQUARE = 2
+   };
+
+   // A geometric block in the grid (of one GeoDir) for a fixed value
+   class GeoBlock {
+   public:
+      GeoBlock(SudokuSolver &ss, GeoDir dir_, unsigned int position_);
+
+      bool lock_possibile_value(unsigned int idx, unsigned int turn);
+
+      void reset_from_turn(unsigned int turn);
+
+      unsigned int num_free() const { return _num_free; }
+
+      unsigned int freedom_index() const {
+         return _num_free == 0 ? std::numeric_limits<unsigned int>::max() : _num_free;
+      }
+
+      std::vector<Coord> avaliable_coordinates() const;
+
+      unsigned int size() const { return static_cast<unsigned int>(_elements.size()); }
+
+   private:
+      struct Entry {
+         const Tile *tile;
+         int turn;
+
+         explicit Entry(Tile *tile_ = nullptr, int turn_ = AVAILABLE) : tile{tile_}, turn{turn_} {}
+      };
+
+      std::vector<Entry> _elements;
+      unsigned int _num_free;
+      GeoDir _dir;
+      unsigned int _position;
+      unsigned int _minisize;
+   };
+
+   struct GeoCoord {
+      unsigned int value;
+      GeoDir dir;
+      unsigned int idx;
+      GeoCoord(unsigned int value_, unsigned int dir_, unsigned int idx_): value{value_}, dir{dir_}, idx{idx_} {}
+   };
 
 public:
    // @p input_file is a file from which to read the sudoku
@@ -96,6 +142,7 @@ public:
    unsigned int get_size() const { return _size; }
 
    static bool is_positive_square(unsigned int n);
+
 private:
 
    // Set a required value @p val in the entry of _matrix at coordinated @p coord
@@ -115,6 +162,9 @@ private:
    // the tile with less freedom among those that are free
    Coord free_tile_with_smaller_freedom() const;
 
+   // the geometric block with smaller freedom among those that are free
+   GeoCoord free_geo_block_with_smaller_freedom() const;
+
    // locks @p val in the tile in coordinate @p coord
    // returns false if the locking brings to unfeasable solution
    bool lock_possible_value(Coord coord, unsigned int val);
@@ -122,7 +172,19 @@ private:
    // the current turn
    unsigned int turn() const { return static_cast<unsigned int>(_guesses_list.size()); }
 
+   // the supergrid index of a coord
+   unsigned int supergrid_idx(Coord cd) const { return (cd.first / _minisize) * _minisize + (cd.second / _minisize); }
+
+   // the minigrid index of a coord
+   unsigned int minigrid_idx(Coord cd) const { return (cd.first % _minisize) * _minisize + (cd.second % _minisize); }
+
+   const Tile &tile(Coord cd) const { return _matrix[cd.first][cd.second]; }
+   Tile &tile(Coord cd) { return const_cast<Tile&>(static_cast<const SudokuSolver&>(*this).tile(cd)); }
+   const GeoBlock &geo_block(GeoCoord cd) const { return _geo_blocks[cd.value-1][cd.dir][cd.idx]; }
+   GeoBlock &geo_block(GeoCoord cd) { return const_cast<GeoBlock&>(static_cast<const SudokuSolver&>(*this).geo_block(cd)); }
+
    Matrix _matrix;  // The matrix of Tiles. Represents the Sudoku matrix
+   std::vector<std::array<std::vector<GeoBlock>, 3>> _geo_blocks;
    unsigned int _num_free_tiles;  // The number of tiles for which the value has not been fixed yet
    std::vector<Coord> _guesses_list;  // A list of the coordinates where we made "active" guesses. The list is sorted
    bool _is_solvable;  // False if we proved there is no solution for the puzzle
