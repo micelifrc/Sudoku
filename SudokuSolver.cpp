@@ -111,9 +111,14 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
       return true;
    }
    tile(coord).set_to_value(value, turn());
-   _geo_blocks[value - 1][0][coord.first].lock_possibile_value(coord.second, turn());
-   _geo_blocks[value - 1][1][coord.second].lock_possibile_value(coord.first, turn());
-   _geo_blocks[value - 1][2][supergrid_idx(coord)].lock_possibile_value(minigrid_idx(coord), turn());
+   for (unsigned int idx = 0; idx != _size; ++idx) {
+      lock_all_geo_blocks(Coord{coord.first, idx}, value);
+      lock_all_geo_blocks(Coord{idx, coord.second}, value);
+      lock_all_geo_blocks(Coord{(coord.first / _minisize) * _minisize + (idx / _minisize), (coord.second / _minisize) * _minisize + (idx % _minisize)}, value);
+   }
+   for (unsigned int forb_value = 1; forb_value <= _size; ++forb_value) {
+      lock_all_geo_blocks(coord, forb_value);
+   }
    --_num_free_tiles;
    for (unsigned int idx = 0; idx != _size; ++idx) {
       if (idx != coord.first) {
@@ -165,8 +170,9 @@ bool SudokuSolver::guess() {
    Coord tile_to_guess_coord = free_tile_with_smaller_freedom();
    Tile &tile_to_guess = tile(tile_to_guess_coord);
    GeoCoord smaller_free_geo_block_coord = free_geo_block_with_smaller_freedom();
-   const GeoBlock &geo_block = _geo_blocks[smaller_free_geo_block_coord.value-1][smaller_free_geo_block_coord.dir][smaller_free_geo_block_coord.idx];
-   if(tile_to_guess.freedom_index() <= geo_block.freedom_index()) {
+   const GeoBlock &geo_block = _geo_blocks[smaller_free_geo_block_coord.value -
+                                           1][smaller_free_geo_block_coord.dir][smaller_free_geo_block_coord.idx];
+   if (tile_to_guess.freedom_index() <= geo_block.freedom_index()) {
       for (unsigned int candidate_value = 1; candidate_value <= _size; ++candidate_value) {
          if (tile_to_guess.can_set_to(candidate_value)) {
             _guesses_list.push_back(tile_to_guess_coord);
@@ -181,7 +187,7 @@ bool SudokuSolver::guess() {
          }
       }
    } else {
-      for(Coord candidate_coord : geo_block.avaliable_coordinates()) {
+      for (Coord candidate_coord : geo_block.avaliable_coordinates()) {
          Tile &candidate_tile = tile(candidate_coord);
          if (candidate_tile.can_set_to(smaller_free_geo_block_coord.value)) {
             _guesses_list.push_back(tile_to_guess_coord);
@@ -236,7 +242,8 @@ SudokuSolver::GeoCoord SudokuSolver::free_geo_block_with_smaller_freedom() const
       for (unsigned int dir_idx = 0; dir_idx != 3; ++dir_idx) {
          candidate_geo_coord.dir = static_cast<GeoDir>(dir_idx);
          for (candidate_geo_coord.idx = 0; candidate_geo_coord.idx != _size; ++candidate_geo_coord.idx) {
-            candidate_freedom = _geo_blocks[candidate_geo_coord.value - 1][dir_idx][candidate_geo_coord.idx].freedom_index();
+            candidate_freedom = _geo_blocks[candidate_geo_coord.value -
+                                            1][dir_idx][candidate_geo_coord.idx].freedom_index();
             if (candidate_freedom < min_freedom) {
                geo_coord_min_freedom = candidate_geo_coord;
                min_freedom = candidate_freedom;
@@ -321,6 +328,13 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
    }
 
    return true;
+}
+
+void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord cd, unsigned int value) {
+   _geo_blocks[value - 1][0][cd.first].lock_possibile_value(cd.second, turn());
+   _geo_blocks[value - 1][1][cd.second].lock_possibile_value(cd.first, turn());
+   _geo_blocks[value - 1][2][(cd.first / _minisize) * _minisize + (cd.second / _minisize)].lock_possibile_value(
+         (cd.first % _minisize) * _minisize + (cd.second % _minisize), turn());
 }
 
 bool SudokuSolver::is_positive_square(unsigned int n) {
@@ -408,7 +422,8 @@ unsigned int SudokuSolver::Tile::first_choice_available() const {
 
 
 SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, unsigned int position_) :
-      _elements(ss._size), _num_free{ss._size}, _dir{dir_}, _position{position_}, _minisize{static_cast<unsigned int>(std::sqrt(ss._size))} {
+      _elements(ss._size), _num_free{ss._size}, _dir{dir_}, _position{position_},
+      _minisize{static_cast<unsigned int>(std::sqrt(ss._size))} {
    for (unsigned other_idx = 0; other_idx != ss._size; ++other_idx) {
       switch (dir_) {
          case ROW: {
@@ -421,7 +436,7 @@ SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, un
          }
          case MINISQUARE: {
             _elements[other_idx].tile = &ss.matrix()[position_ / ss._minisize + other_idx / ss._minisize]
-                  [position_ % ss._minisize +other_idx %ss._minisize];
+            [position_ % ss._minisize + other_idx % ss._minisize];
             break;
          }
       }
@@ -456,25 +471,26 @@ std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::avaliable_coordinates()
    std::vector<SudokuSolver::Coord> output_vec;
    switch (_dir) {
       case ROW: {
-         for(unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
-            if(_elements[inner_idx].turn == AVAILABLE) {
+         for (unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
+            if (_elements[inner_idx].turn == AVAILABLE) {
                output_vec.emplace_back(Coord{_position, inner_idx});
             }
          }
          break;
       }
       case COL: {
-         for(unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
-            if(_elements[inner_idx].turn == AVAILABLE) {
+         for (unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
+            if (_elements[inner_idx].turn == AVAILABLE) {
                output_vec.emplace_back(Coord{inner_idx, _position});
             }
          }
          break;
       }
       case MINISQUARE: {
-         for(unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
-            if(_elements[inner_idx].turn == AVAILABLE) {
-               output_vec.emplace_back(Coord{(_position / _minisize) * _minisize + (inner_idx / _minisize), (_position % _minisize) * _minisize + (inner_idx % _minisize)});
+         for (unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
+            if (_elements[inner_idx].turn == AVAILABLE) {
+               output_vec.emplace_back(Coord{(_position / _minisize) * _minisize + (inner_idx / _minisize),
+                                             (_position % _minisize) * _minisize + (inner_idx % _minisize)});
             }
          }
          break;

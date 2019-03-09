@@ -169,6 +169,9 @@ private:
    // returns false if the locking brings to unfeasable solution
    bool lock_possible_value(Coord coord, unsigned int val);
 
+   // locks all the points in _geo_blocks with coordinates @p cd and required @p value
+   void lock_all_geo_blocks(Coord cd, unsigned int value);
+
    // the current turn
    unsigned int turn() const { return static_cast<unsigned int>(_guesses_list.size()); }
 
