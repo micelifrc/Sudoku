@@ -5,12 +5,16 @@
 
 #include "SudokuSolver.h"
 
+const unsigned int SudokuSolver::FREE = 0;
+const int SudokuSolver::AVAILABLE = -1;
+
 SudokuSolver::SudokuSolver(std::ifstream &input_file) : _is_solvable{true} {
    std::vector<unsigned int> input_numbers;
    unsigned int n;
    while (input_file >> n) {
       input_numbers.push_back(n);
    }
+
    _num_free_tiles = static_cast<unsigned int>(input_numbers.size());
    if (not is_positive_square(_num_free_tiles)) {
       throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
@@ -63,6 +67,7 @@ bool SudokuSolver::has_legal_solution() const {
          contained_values[idx] = false;
       }
    };
+
    auto all_values_are_contained = [&]() -> bool {
       for (const auto &val : contained_values) {
          if (not val) {
@@ -184,9 +189,8 @@ bool SudokuSolver::guess() {
    Coord tile_to_guess_coord = free_tile_with_smaller_freedom();
    Tile &tile_to_guess = tile(tile_to_guess_coord);
    GeoCoord smaller_free_geo_block_coord = free_geo_block_with_smaller_freedom();
-   const GeoBlock &geo_block = _geo_blocks[smaller_free_geo_block_coord.value -
-                                           1][smaller_free_geo_block_coord.dir][smaller_free_geo_block_coord.idx];
-   if (tile_to_guess.freedom_index() <= geo_block.freedom_index()) {
+   const GeoBlock &geo_block_to_fix = geo_block(smaller_free_geo_block_coord);
+   if (tile_to_guess.freedom_index() <= geo_block_to_fix.freedom_index()) {
       for (unsigned int candidate_value = 1; candidate_value <= _size; ++candidate_value) {
          if (tile_to_guess.can_set_to(candidate_value)) {
             _guesses_list.push_back(tile_to_guess_coord);
@@ -201,7 +205,7 @@ bool SudokuSolver::guess() {
          }
       }
    } else {
-      for (Coord candidate_coord : geo_block.avaliable_coordinates()) {
+      for (Coord candidate_coord : geo_block_to_fix.avaliable_coordinates()) {
          Tile &candidate_tile = tile(candidate_coord);
          if (candidate_tile.can_set_to(smaller_free_geo_block_coord.value)) {
             _guesses_list.push_back(tile_to_guess_coord);
@@ -286,6 +290,7 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
          }
       }
    }
+
    if (other_entry == _size) {
       return false;
    }
@@ -321,7 +326,7 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
    other_entry = _size;
    for (unsigned int idx = 0; idx != _size; ++idx) {
       if (_matrix[(coord.row_idx / _minisize) * _minisize + (idx / _minisize)][(coord.row_idx % _minisize) * _minisize +
-                                                                             (idx % _minisize)].can_set_to(val)) {
+                                                                               (idx % _minisize)].can_set_to(val)) {
          if (other_entry < _size) {
             should_propagate = false;
             break;
@@ -344,11 +349,12 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
    return true;
 }
 
-void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord cd, unsigned int value) {
-   _geo_blocks[value - 1][0][cd.row_idx].lock_possibile_value(cd.col_idx, turn());
-   _geo_blocks[value - 1][1][cd.col_idx].lock_possibile_value(cd.row_idx, turn());
-   _geo_blocks[value - 1][2][(cd.row_idx / _minisize) * _minisize + (cd.col_idx / _minisize)].lock_possibile_value(
-         (cd.row_idx % _minisize) * _minisize + (cd.col_idx % _minisize), turn());
+void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord coord, unsigned int value) {
+   _geo_blocks[value - 1][0][coord.row_idx].lock_possible_value(coord.col_idx, turn());
+   _geo_blocks[value - 1][1][coord.col_idx].lock_possible_value(coord.row_idx, turn());
+   _geo_blocks[value - 1][2][(coord.row_idx / _minisize) * _minisize +
+                             (coord.col_idx / _minisize)].lock_possible_value(
+         (coord.row_idx % _minisize) * _minisize + (coord.col_idx % _minisize), turn());
 }
 
 bool SudokuSolver::is_positive_square(unsigned int n) {
@@ -359,8 +365,7 @@ bool SudokuSolver::is_positive_square(unsigned int n) {
    return n == sr * sr;
 }
 
-const unsigned int SudokuSolver::FREE = 0;
-const int SudokuSolver::AVAILABLE = -1;
+////////////////////////////////////////                  Tile                  ////////////////////////////////////////
 
 SudokuSolver::Tile::Tile(unsigned int grid_size_) : _value{FREE}, _from_input{false}, _is_conflictual{false},
                                                     _grid_size{grid_size_}, _locking_turn(grid_size_, AVAILABLE) {}
@@ -434,6 +439,7 @@ unsigned int SudokuSolver::Tile::first_choice_available() const {
    throw std::logic_error("Call to first choice available without any choice available");
 }
 
+////////////////////////////////////////                GeoBlock                ////////////////////////////////////////
 
 SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, unsigned int position_) :
       _elements(ss._size), _num_free{ss._size}, _dir{dir_}, _position{position_},
@@ -457,8 +463,7 @@ SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, un
    }
 }
 
-
-bool SudokuSolver::GeoBlock::lock_possibile_value(unsigned int idx, unsigned int turn) {
+bool SudokuSolver::GeoBlock::lock_possible_value(unsigned int idx, unsigned int turn) {
    if (idx >= _elements.size()) {
       throw std::logic_error("Cannot lock value in invalid index");
    }
@@ -470,7 +475,6 @@ bool SudokuSolver::GeoBlock::lock_possibile_value(unsigned int idx, unsigned int
    return false;
 }
 
-
 void SudokuSolver::GeoBlock::reset_from_turn(unsigned int turn) {
    for (auto &el : _elements) {
       if (el.turn >= turn) {
@@ -479,7 +483,6 @@ void SudokuSolver::GeoBlock::reset_from_turn(unsigned int turn) {
       }
    }
 }
-
 
 std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::avaliable_coordinates() const {
    std::vector<SudokuSolver::Coord> output_vec;
@@ -512,6 +515,8 @@ std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::avaliable_coordinates()
    }
    return output_vec;
 }
+
+////////////////////////////////////////          non-member functions          ////////////////////////////////////////
 
 std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku) {
    unsigned int num_digits = 1;  // the number of digits of the largest number
