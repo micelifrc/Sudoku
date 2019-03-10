@@ -58,6 +58,9 @@ public:
    unsigned int get_size() const { return _size; }
 
 private:
+   // The procedures called by the constructor
+   void constructor_function(std::ifstream &input_file);
+
    // Set a required value @p val in the entry of _matrix at coordinated @p coord
    // This will call set_value for subsequent tiles that are forced by this set_value call
    // Returns true if set_value added a legal value (also considering the propagation)
@@ -105,6 +108,10 @@ private:
             (coord.row_idx % _minisize) * _minisize + (coord.col_idx % _minisize)};
    }
 
+   // Read the numbers in input file, and records them in the output vector
+   static std::vector<unsigned int> read_input_file(std::ifstream &input_file);
+
+   // Tell if the input number @p n is a perfect square and n != 0
    static bool is_positive_square(unsigned int n);
 
    Matrix _matrix;  // The matrix of Tiles. Represents the Sudoku matrix

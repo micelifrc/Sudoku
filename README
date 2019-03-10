@@ -16,4 +16,5 @@ The following is an example of a possible input file for the standard case of SI
 0 0 0 4 1 9 0 0 5
 0 0 0 0 8 0 0 7 9
 
-Observe that only the numeric characters will be read.
+Observe that the presence of non-numeric characters (like letters) will confuse the program,
+this usually results in the program thinking that the file does not provide a table

@@ -9,47 +9,7 @@ const unsigned int SudokuSolver::FREE = 0;
 const int SudokuSolver::AVAILABLE = -1;
 
 SudokuSolver::SudokuSolver(std::ifstream &input_file) : _is_solvable{true} {
-   std::vector<unsigned int> input_numbers;
-   unsigned int n;
-   while (input_file >> n) {
-      input_numbers.push_back(n);
-   }
-
-   _num_free_tiles = static_cast<unsigned int>(input_numbers.size());
-   if (not is_positive_square(_num_free_tiles)) {
-      throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
-   }
-   _size = static_cast<unsigned int>(std::sqrt(_num_free_tiles));
-   if (not is_positive_square(_size)) {
-      throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
-   }
-   _minisize = static_cast<unsigned int>(std::sqrt(_size));
-
-   _matrix = std::vector<std::vector<Tile>>(_size, std::vector<Tile>(_size, Tile(_size)));
-   _geo_blocks.reserve(_size);
-   for (unsigned int value = 1; value <= _size; ++value) {
-      _geo_blocks.emplace_back(std::array<std::vector<GeoBlock>, 3>{});
-      for (unsigned int dir = 0; dir != 3; ++dir) {
-         _geo_blocks.back()[dir].reserve(_size);
-         for (unsigned int idx = 0; idx != _size; ++idx) {
-            _geo_blocks.back()[dir].emplace_back(*this, static_cast<GeoDir>(dir), idx);
-         }
-      }
-   }
-
-   Coord cd;
-   for (cd.row_idx = 0; cd.row_idx != _size; ++cd.row_idx) {
-      for (cd.col_idx = 0; cd.col_idx != _size; ++cd.col_idx) {
-         if (input_numbers[cd.row_idx * _size + cd.col_idx] != 0) {
-            tile(cd).set_from_input(true);
-            if (not set_value(cd, input_numbers[cd.row_idx * _size + cd.col_idx])) {
-               _is_solvable = false;
-               tile(cd).set_is_conflictual(true);
-               return;
-            }
-         }
-      }
-   }
+   constructor_function(input_file);
 }
 
 bool SudokuSolver::has_legal_solution() const {
@@ -106,6 +66,48 @@ bool SudokuSolver::has_legal_solution() const {
       }
    }
    return true;
+}
+
+void SudokuSolver::constructor_function(std::ifstream &input_file) {
+   std::vector<unsigned int> input_numbers = read_input_file(input_file);
+   if (input_numbers.empty()) {
+      throw std::invalid_argument("The input file does not contain a grid. See the README file");
+   }
+   _num_free_tiles = static_cast<unsigned int>(input_numbers.size());
+   if (not is_positive_square(_num_free_tiles)) {
+      throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
+   }
+   _size = static_cast<unsigned int>(std::sqrt(_num_free_tiles));
+   if (not is_positive_square(_size)) {
+      throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
+   }
+   _minisize = static_cast<unsigned int>(std::sqrt(_size));
+
+   _matrix = std::vector<std::vector<Tile>>(_size, std::vector<Tile>(_size, Tile(_size)));
+   _geo_blocks.reserve(_size);
+   for (unsigned int value = 1; value <= _size; ++value) {
+      _geo_blocks.emplace_back(std::array<std::vector<GeoBlock>, 3>{});
+      for (unsigned int dir = 0; dir != 3; ++dir) {
+         _geo_blocks.back()[dir].reserve(_size);
+         for (unsigned int idx = 0; idx != _size; ++idx) {
+            _geo_blocks.back()[dir].emplace_back(*this, static_cast<GeoDir>(dir), idx);
+         }
+      }
+   }
+
+   Coord cd;
+   for (cd.row_idx = 0; cd.row_idx != _size; ++cd.row_idx) {
+      for (cd.col_idx = 0; cd.col_idx != _size; ++cd.col_idx) {
+         if (input_numbers[cd.row_idx * _size + cd.col_idx] != 0) {
+            tile(cd).set_from_input(true);
+            if (not set_value(cd, input_numbers[cd.row_idx * _size + cd.col_idx])) {
+               _is_solvable = false;
+               tile(cd).set_is_conflictual(true);
+               return;
+            }
+         }
+      }
+   }
 }
 
 bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
@@ -196,14 +198,14 @@ bool SudokuSolver::guess() {
       bool is_a_guess = (tile_to_guess.freedom_index() > 1);
       for (unsigned int candidate_value = 1; candidate_value <= _size; ++candidate_value) {
          if (tile_to_guess.can_set_to(candidate_value)) {
-            if(is_a_guess) {
+            if (is_a_guess) {
                _guesses_list.push_back(tile_to_guess_coord);
             }
             if (set_value(tile_to_guess_coord, candidate_value) and guess()) {
                return true;
             }
             remove_guess();
-            if(is_a_guess) {
+            if (is_a_guess) {
                _guesses_list.pop_back();
             }
             if (not lock_possible_value(tile_to_guess_coord, candidate_value)) {
@@ -216,14 +218,14 @@ bool SudokuSolver::guess() {
       for (Coord candidate_coord : geo_block_to_fix.available_coordinates()) {
          Tile &candidate_tile = tile(candidate_coord);
          if (candidate_tile.can_set_to(smaller_free_geo_block_coord.value)) {
-            if(is_a_guess) {
+            if (is_a_guess) {
                _guesses_list.push_back(tile_to_guess_coord);
             }
             if (set_value(candidate_coord, smaller_free_geo_block_coord.value) and guess()) {
                return true;
             }
             remove_guess();
-            if(is_a_guess) {
+            if (is_a_guess) {
                _guesses_list.pop_back();
             }
          }
@@ -366,6 +368,16 @@ void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord coord, unsigned int v
    _geo_blocks[value - 1][1][coord.col_idx].lock_possible_value(coord.row_idx, turn());
    std::pair<unsigned int, unsigned int> minigrid_ind = minigrid_indices(coord);
    _geo_blocks[value - 1][2][minigrid_ind.first].lock_possible_value(minigrid_ind.second, turn());
+}
+
+
+std::vector<unsigned int> SudokuSolver::read_input_file(std::ifstream &input_file) {
+   std::vector<unsigned int> input_numbers;
+   unsigned int n = 0;
+   while (input_file >> n) {
+      input_numbers.push_back(n);
+   }
+   return input_numbers;
 }
 
 bool SudokuSolver::is_positive_square(unsigned int n) {
