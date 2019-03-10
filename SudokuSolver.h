@@ -98,6 +98,13 @@ private:
       return const_cast<GeoBlock &>(static_cast<const SudokuSolver &>(*this).geo_block(cd));
    }
 
+   // The two indices with respect to the minigrid
+   std::pair<unsigned int, unsigned int> minigrid_indices(Coord coord) const {
+      return std::pair<unsigned int, unsigned int>{
+            (coord.row_idx / _minisize) * _minisize + (coord.col_idx / _minisize),
+            (coord.row_idx % _minisize) * _minisize + (coord.col_idx % _minisize)};
+   }
+
    static bool is_positive_square(unsigned int n);
 
    Matrix _matrix;  // The matrix of Tiles. Represents the Sudoku matrix

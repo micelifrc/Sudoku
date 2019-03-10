@@ -53,9 +53,10 @@ SudokuSolver::SudokuSolver(std::ifstream &input_file) : _is_solvable{true} {
 }
 
 bool SudokuSolver::has_legal_solution() const {
-   for (unsigned int idx_row = 0; idx_row != _size; ++idx_row) {
-      for (unsigned int idx_col = 0; idx_col != _size; ++idx_col) {
-         if (not _matrix[idx_row][idx_col].has_legal_value()) {
+   Coord coord;
+   for (coord.row_idx = 0; coord.row_idx != _size; ++coord.row_idx) {
+      for (coord.col_idx = 0; coord.col_idx != _size; ++coord.col_idx) {
+         if (not tile(coord).has_legal_value()) {
             return false;
          }
       }
@@ -67,7 +68,6 @@ bool SudokuSolver::has_legal_solution() const {
          contained_values[idx] = false;
       }
    };
-
    auto all_values_are_contained = [&]() -> bool {
       for (const auto &val : contained_values) {
          if (not val) {
@@ -77,19 +77,19 @@ bool SudokuSolver::has_legal_solution() const {
       return true;
    };
 
-   for (unsigned int idx_row = 0; idx_row != _size; ++idx_row) {
+   for (coord.row_idx = 0; coord.row_idx != _size; ++coord.row_idx) {
       reset_contained_values();
-      for (unsigned int idx_col = 0; idx_col != _size; ++idx_col) {
-         contained_values[_matrix[idx_row][idx_col].value() - 1] = true;
+      for (coord.col_idx = 0; coord.col_idx != _size; ++coord.col_idx) {
+         contained_values[tile(coord).value() - 1] = true;
       }
       if (not all_values_are_contained()) {
          return false;
       }
    }
-   for (unsigned int idx_col = 0; idx_col != _size; ++idx_col) {
+   for (coord.col_idx = 0; coord.col_idx != _size; ++coord.col_idx) {
       reset_contained_values();
-      for (unsigned int idx_row = 0; idx_row != _size; ++idx_row) {
-         contained_values[_matrix[idx_row][idx_col].value() - 1] = true;
+      for (coord.row_idx = 0; coord.row_idx != _size; ++coord.row_idx) {
+         contained_values[tile(coord).value() - 1] = true;
       }
       if (not all_values_are_contained()) {
          return false;
@@ -186,34 +186,46 @@ bool SudokuSolver::guess() {
    if (_num_free_tiles == 0) {
       return true;
    }
+
    Coord tile_to_guess_coord = free_tile_with_smaller_freedom();
    Tile &tile_to_guess = tile(tile_to_guess_coord);
    GeoCoord smaller_free_geo_block_coord = free_geo_block_with_smaller_freedom();
    const GeoBlock &geo_block_to_fix = geo_block(smaller_free_geo_block_coord);
+
    if (tile_to_guess.freedom_index() <= geo_block_to_fix.freedom_index()) {
+      bool is_a_guess = (tile_to_guess.freedom_index() > 1);
       for (unsigned int candidate_value = 1; candidate_value <= _size; ++candidate_value) {
          if (tile_to_guess.can_set_to(candidate_value)) {
-            _guesses_list.push_back(tile_to_guess_coord);
+            if(is_a_guess) {
+               _guesses_list.push_back(tile_to_guess_coord);
+            }
             if (set_value(tile_to_guess_coord, candidate_value) and guess()) {
                return true;
             }
             remove_guess();
-            _guesses_list.pop_back();
+            if(is_a_guess) {
+               _guesses_list.pop_back();
+            }
             if (not lock_possible_value(tile_to_guess_coord, candidate_value)) {
                return false;
             }
          }
       }
    } else {
+      bool is_a_guess = (geo_block_to_fix.freedom_index() > 1);
       for (Coord candidate_coord : geo_block_to_fix.available_coordinates()) {
          Tile &candidate_tile = tile(candidate_coord);
          if (candidate_tile.can_set_to(smaller_free_geo_block_coord.value)) {
-            _guesses_list.push_back(tile_to_guess_coord);
+            if(is_a_guess) {
+               _guesses_list.push_back(tile_to_guess_coord);
+            }
             if (set_value(candidate_coord, smaller_free_geo_block_coord.value) and guess()) {
                return true;
             }
             remove_guess();
-            _guesses_list.pop_back();
+            if(is_a_guess) {
+               _guesses_list.pop_back();
+            }
          }
       }
    }
@@ -352,9 +364,8 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
 void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord coord, unsigned int value) {
    _geo_blocks[value - 1][0][coord.row_idx].lock_possible_value(coord.col_idx, turn());
    _geo_blocks[value - 1][1][coord.col_idx].lock_possible_value(coord.row_idx, turn());
-   _geo_blocks[value - 1][2][(coord.row_idx / _minisize) * _minisize +
-                             (coord.col_idx / _minisize)].lock_possible_value(
-         (coord.row_idx % _minisize) * _minisize + (coord.col_idx % _minisize), turn());
+   std::pair<unsigned int, unsigned int> minigrid_ind = minigrid_indices(coord);
+   _geo_blocks[value - 1][2][minigrid_ind.first].lock_possible_value(minigrid_ind.second, turn());
 }
 
 bool SudokuSolver::is_positive_square(unsigned int n) {

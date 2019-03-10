@@ -1,5 +1,5 @@
 /*
- * This program will solve a sudoku problem
+ * This program will solve Sudoku puzzles of arbitrary size
  */
 
 #include <iostream>
@@ -11,7 +11,12 @@ int main(int argc, char *argv[]) {
    if (argc < 2) {
       throw std::invalid_argument("Error! Need the input files as arguments");
    }
-   std::cout << "These are the solutions for the required Sudoku puzzles:\n\n";
+
+   if (argc == 2) {
+      std::cout << "This is the solution for the required Sudoku puzzle:\n\n";
+   } else {
+      std::cout << "These are the solutions for the required Sudoku puzzles:\n\n";
+   }
    for (unsigned int idx = 1; idx != argc; ++idx) {
       try {
          input_file.open(argv[idx]);
