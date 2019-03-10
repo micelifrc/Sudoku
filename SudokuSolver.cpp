@@ -58,8 +58,8 @@ bool SudokuSolver::has_legal_solution() const {
    for (unsigned int idx_ext = 0; idx_ext != _size; ++idx_ext) {
       reset_contained_values();
       for (unsigned int idx_int = 0; idx_int != _size; ++idx_int) {
-         contained_values[_matrix[(idx_ext / _minisize) * _minisize + (idx_int / _minisize)]
-                          [(idx_ext % _minisize) * _minisize + (idx_int % _minisize)].value() - 1] = true;
+         contained_values[_matrix[(idx_ext / _region_size) * _region_size + (idx_int / _region_size)]
+                          [(idx_ext % _region_size) * _region_size + (idx_int % _region_size)].value() - 1] = true;
       }
       if (not all_values_are_contained()) {
          return false;
@@ -81,7 +81,7 @@ void SudokuSolver::constructor_function(std::ifstream &input_file) {
    if (not is_positive_square(_size)) {
       throw std::invalid_argument("The input file does not have a number of values in form n^4 for n > 0 integer");
    }
-   _minisize = static_cast<unsigned int>(std::sqrt(_size));
+   _region_size = static_cast<unsigned int>(std::sqrt(_size));
 
    _matrix = std::vector<std::vector<Tile>>(_size, std::vector<Tile>(_size, Tile(_size)));
    _geo_blocks.reserve(_size);
@@ -130,11 +130,11 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
          lock_all_geo_blocks(Coord{coord.row_idx, idx}, value);
       }
    }
-   for (unsigned int row_idx = (coord.row_idx / _minisize) * _minisize;
-        row_idx != (coord.row_idx / _minisize + 1) * _minisize; ++row_idx) {
+   for (unsigned int row_idx = (coord.row_idx / _region_size) * _region_size;
+        row_idx != (coord.row_idx / _region_size + 1) * _region_size; ++row_idx) {
       if (row_idx == coord.row_idx) continue;
-      for (unsigned int col_idx = (coord.col_idx / _minisize) * _minisize;
-           col_idx != (coord.col_idx / _minisize + 1) * _minisize; ++col_idx) {
+      for (unsigned int col_idx = (coord.col_idx / _region_size) * _region_size;
+           col_idx != (coord.col_idx / _region_size + 1) * _region_size; ++col_idx) {
          if (col_idx == coord.col_idx) continue;
          lock_all_geo_blocks(Coord{row_idx, col_idx}, value);
       }
@@ -163,11 +163,11 @@ bool SudokuSolver::set_value(SudokuSolver::Coord coord, unsigned int value) {
          }
       }
    }
-   for (unsigned int idx_row = _minisize * (coord.row_idx / _minisize);
-        idx_row != _minisize * (coord.row_idx / _minisize + 1); ++idx_row) {
+   for (unsigned int idx_row = _region_size * (coord.row_idx / _region_size);
+        idx_row != _region_size * (coord.row_idx / _region_size + 1); ++idx_row) {
       if (idx_row != coord.row_idx) {
-         for (unsigned int idx_col = _minisize * (coord.col_idx / _minisize);
-              idx_col != _minisize * (coord.col_idx / _minisize + 1); ++idx_col) {
+         for (unsigned int idx_col = _region_size * (coord.col_idx / _region_size);
+              idx_col != _region_size * (coord.col_idx / _region_size + 1); ++idx_col) {
             if (idx_col != coord.col_idx) {
                if (not _matrix[idx_row][idx_col].lock_possible_value(value, turn())) {
                   return false;
@@ -339,8 +339,9 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
    should_propagate = false;
    other_entry = _size;
    for (unsigned int idx = 0; idx != _size; ++idx) {
-      if (_matrix[(coord.row_idx / _minisize) * _minisize + (idx / _minisize)][(coord.row_idx % _minisize) * _minisize +
-                                                                               (idx % _minisize)].can_set_to(val)) {
+      if (_matrix[(coord.row_idx / _region_size) * _region_size + (idx / _region_size)][
+            (coord.row_idx % _region_size) * _region_size +
+            (idx % _region_size)].can_set_to(val)) {
          if (other_entry < _size) {
             should_propagate = false;
             break;
@@ -354,8 +355,8 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
       return false;
    }
    if (should_propagate) {
-      if (not set_value(Coord{(coord.row_idx / _minisize) * _minisize + (other_entry / _minisize),
-                              (coord.row_idx % _minisize) * _minisize + (other_entry % _minisize)}, val)) {
+      if (not set_value(Coord{(coord.row_idx / _region_size) * _region_size + (other_entry / _region_size),
+                              (coord.row_idx % _region_size) * _region_size + (other_entry % _region_size)}, val)) {
          return false;
       }
    }
@@ -366,8 +367,8 @@ bool SudokuSolver::lock_possible_value(Coord coord, unsigned int val) {
 void SudokuSolver::lock_all_geo_blocks(SudokuSolver::Coord coord, unsigned int value) {
    _geo_blocks[value - 1][0][coord.row_idx].lock_possible_value(coord.col_idx, turn());
    _geo_blocks[value - 1][1][coord.col_idx].lock_possible_value(coord.row_idx, turn());
-   std::pair<unsigned int, unsigned int> minigrid_ind = minigrid_indices(coord);
-   _geo_blocks[value - 1][2][minigrid_ind.first].lock_possible_value(minigrid_ind.second, turn());
+   std::pair<unsigned int, unsigned int> region_ind = region_indices(coord);
+   _geo_blocks[value - 1][2][region_ind.first].lock_possible_value(region_ind.second, turn());
 }
 
 
@@ -466,7 +467,7 @@ unsigned int SudokuSolver::Tile::first_choice_available() const {
 
 SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, unsigned int position_) :
       _elements(ss._size), _num_free{ss._size}, _dir{dir_}, _position{position_},
-      _minisize{static_cast<unsigned int>(std::sqrt(ss._size))} {
+      _region_size{static_cast<unsigned int>(std::sqrt(ss._size))} {
    for (unsigned other_idx = 0; other_idx != ss._size; ++other_idx) {
       switch (dir_) {
          case ROW: {
@@ -477,9 +478,9 @@ SudokuSolver::GeoBlock::GeoBlock(SudokuSolver &ss, SudokuSolver::GeoDir dir_, un
             _elements[other_idx].tile = &ss.matrix()[other_idx][position_];
             break;
          }
-         case MINISQUARE: {
-            _elements[other_idx].tile = &ss.matrix()[position_ / ss._minisize + other_idx / ss._minisize]
-            [position_ % ss._minisize + other_idx % ss._minisize];
+         case REGION: {
+            _elements[other_idx].tile = &ss.matrix()[position_ / ss._region_size + other_idx / ss._region_size]
+            [position_ % ss._region_size + other_idx % ss._region_size];
             break;
          }
       }
@@ -526,11 +527,11 @@ std::vector<SudokuSolver::Coord> SudokuSolver::GeoBlock::available_coordinates()
          }
          break;
       }
-      case MINISQUARE: {
+      case REGION: {
          for (unsigned int inner_idx = 0; inner_idx != size(); ++inner_idx) {
             if (_elements[inner_idx].turn == AVAILABLE) {
-               output_vec.emplace_back(Coord{(_position / _minisize) * _minisize + (inner_idx / _minisize),
-                                             (_position % _minisize) * _minisize + (inner_idx % _minisize)});
+               output_vec.emplace_back(Coord{(_position / _region_size) * _region_size + (inner_idx / _region_size),
+                                             (_position % _region_size) * _region_size + (inner_idx % _region_size)});
             }
          }
          break;
@@ -549,11 +550,11 @@ std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku) {
 
    std::string horizontal_line(sudoku.get_size() * (num_digits + 1) + 1, '-');
    for (unsigned int idx_row = 0; idx_row != sudoku.get_size(); ++idx_row) {
-      if (idx_row % sudoku.get_minisize() == 0) {
+      if (idx_row % sudoku.get_region_size() == 0) {
          os << horizontal_line << std::endl;
       }
       for (unsigned int idx_col = 0; idx_col != sudoku.get_size(); ++idx_col) {
-         char separator = idx_col % sudoku.get_minisize() == 0 ? '|' : ' ';
+         char separator = idx_col % sudoku.get_region_size() == 0 ? '|' : ' ';
          os << separator;
          if (sudoku.matrix()[idx_row][idx_col].get_is_conflictual()) {
             os << "\033[1;31m";

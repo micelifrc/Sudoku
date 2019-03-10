@@ -20,7 +20,7 @@ class SudokuSolver {
    typedef std::vector<std::vector<Tile>> Matrix;  // The Sudoku matrix
 
    enum GeoDir : unsigned int {
-      ROW = 0, COL = 1, MINISQUARE = 2
+      ROW = 0, COL = 1, REGION = 2
    };
 public:
    static const unsigned int FREE;  // denotes the tile doesn't have a value yet
@@ -41,7 +41,6 @@ public:
    };
 
    // @p input_file is a file from which to read the sudoku
-   // currently specific for the case MINISIZE == 3
    explicit SudokuSolver(std::ifstream &input_file);
 
    // solves the input sudoku
@@ -53,7 +52,7 @@ public:
 
    const Matrix &matrix() const { return _matrix; }
 
-   unsigned int get_minisize() const { return _minisize; }
+   unsigned int get_region_size() const { return _region_size; }
 
    unsigned int get_size() const { return _size; }
 
@@ -101,11 +100,11 @@ private:
       return const_cast<GeoBlock &>(static_cast<const SudokuSolver &>(*this).geo_block(cd));
    }
 
-   // The two indices with respect to the minigrid
-   std::pair<unsigned int, unsigned int> minigrid_indices(Coord coord) const {
+   // The two indices with respect to the subdivision of the grid in regions
+   std::pair<unsigned int, unsigned int> region_indices(Coord coord) const {
       return std::pair<unsigned int, unsigned int>{
-            (coord.row_idx / _minisize) * _minisize + (coord.col_idx / _minisize),
-            (coord.row_idx % _minisize) * _minisize + (coord.col_idx % _minisize)};
+            (coord.row_idx / _region_size) * _region_size + (coord.col_idx / _region_size),
+            (coord.row_idx % _region_size) * _region_size + (coord.col_idx % _region_size)};
    }
 
    // Read the numbers in input file, and records them in the output vector
@@ -119,7 +118,7 @@ private:
    unsigned int _num_free_tiles;  // The number of tiles for which the value has not been fixed yet
    std::vector<Coord> _guesses_list;  // A list of the coordinates where we made "active" guesses. The list is sorted
    bool _is_solvable;  // False if we proved there is no solution for the puzzle
-   unsigned int _minisize;  // The length of a small tile (usually 3)
+   unsigned int _region_size;  // The length of a small tile (usually 3)
    unsigned int _size;  // The length of the matrix (usually 9)
 };
 
@@ -218,7 +217,7 @@ private:
    unsigned int _num_free;  // the number of tiles that can take the represented value
    GeoDir _dir;  // the direction of the geometric block
    unsigned int _position;  // the position of the geometric block (a number in [0, _size))
-   unsigned int _minisize;  // the minsize of the associated SudokuSolver
+   unsigned int _region_size;  // the minsize of the associated SudokuSolver
 };
 
 std::ostream &operator<<(std::ostream &os, const SudokuSolver &sudoku);
