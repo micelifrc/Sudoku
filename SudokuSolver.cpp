@@ -501,7 +501,7 @@ bool SudokuSolver::GeoBlock::lock_possible_value(unsigned int idx, unsigned int 
 
 void SudokuSolver::GeoBlock::reset_from_turn(unsigned int turn) {
    for (auto &el : _elements) {
-      if (el.turn >= turn) {
+      if (el.turn != AVAILABLE and el.turn >= turn) {
          el.turn = AVAILABLE;
          ++_num_free;
       }
